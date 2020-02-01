@@ -1,0 +1,119 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Mínimos cuadrados
+
+$$Y_i = \beta_o + B_1x_i+E$$
+$$SCE = \sum_i(Y_i - \hat{Y_i})^2 = \sum_i(Y_i - \beta_0 + \beta_1x_i)^2$$
+Minimizar $\beta_0$ y  $\beta_1$
+
+```{r}
+data(iris)
+Y = iris$Sepal.Length
+X = iris$Petal.Width
+plot(X, Y)
+```
+```{r}
+gd <- function(x, y, alpha, beta_0, beta_1){
+  beta_0 <- beta_0 + (alpha /length(x)) * sum(y - beta_0- beta_1 * x )
+  beta_1 <- beta_1 + (alpha /length(x)) * sum(x * (y - beta_0-beta_1 * x))
+c(beta_0, beta_1)
+} 
+#lm(Sepal.Length ~Petal.Width, data = iris)
+```
+
+Paso 1: $\beta_0 = 1, \beta_1 = 1$:
+```{r}
+gd(X, Y, alpha = 1, 1, 1)
+```
+
+```{r}
+plot(X,Y)
+abline(a = 4.644000, b = 0.935696, col = "red")
+```
+
+Paso 2: $\beta_0 = 4.644000, \beta_1 = -392.9764:
+```{r}
+gd(X, Y, alpha = 1, 4.644000, 0.935696)
+```
+
+
+```{r}
+paso0 <- gd(X, Y, alpha = 1, beta_0 = 1, beta_1 = 1)
+paso0
+Costo <- (1 / (2* length(X))) * sum(Y -paso0[1]-paso0[2] * X)
+```
+
+```{r}
+valores_iniciales <- c(1, 1)
+Costo <- numeric(100)
+for(i in 1:100){
+valores_iniciales <- gd(X, Y, alpha = 1, beta_0 = valores_iniciales[1], beta_1 = valores_iniciales[2])
+Costo[i] = (1 / (2* length(X))) * sum(Y -valores_iniciales[1]-valores_iniciales[2] * X) 
+#stop(if(Costo[i] < 0.0001))
+}
+
+
+Costo
+```
+
+Objetivo: Pronosticar Y, iris$Sepal.Length en terminos de
+X = iris$Petal.Width), training (70%)
+
+```{r}
+set.seed(112020)
+indicamue <-sample(150, round(150 * 0.7))
+training <- iris[indicamue,]
+modelo <- lm(Sepal.Length~Petal.Width, data = training)
+summary(modelo)
+```
+
+Evaluar el modelo en mi muestra test
+```{r}
+indica_test <- setdiff(1:150, indicamue) 
+mue_test <- iris[indica_test, c("Petal.Width", "Sepal.Length")]
+# predict(modelo, mue_test)
+MSE <- mean((mue_test$Sepal.Length - predict(modelo, mue_test))^2)
+MSE
+```
+
+```{r}
+MSE <- function(semilla){
+set.seed(semilla)
+indicamue <- sample(150, round(150 * 0.7))
+training <- iris[indicamue,]
+modelo <- lm(Sepal.Length~Petal.Width, data = training)
+summary(modelo)
+indica_test <- setdiff(1:150, indicamue) 
+mue_test <- iris[indica_test, c("Petal.Width", "Sepal.Length")]
+# predict(modelo, mue_test)
+MSE <- mean((mue_test$Sepal.Length - predict(modelo, mue_test))^2)
+return(MSE)
+}
+MSE(112020)
+```
+
+```{r}
+v_mse <- numeric(5000)
+set.seed(112020)
+semillas <- sample(1:1000000, 5000, replace = F)
+
+for(i in 1:5000){
+  v_mse[i] <- MSE(semillas[i])
+}
+```
+
+```{r}
+hist(v_mse)
+summary(v_mse)
+```
+
+
+
+
