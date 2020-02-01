@@ -84,19 +84,20 @@ MSE
 ```
 
 ```{r}
-MSE <- function(semilla){
+MSE <- function(semilla, variable){
 set.seed(semilla)
 indicamue <- sample(150, round(150 * 0.7))
 training <- iris[indicamue,]
-modelo <- lm(Sepal.Length~Petal.Width, data = training)
+formula <- as.formula(paste0("Sepal.Length ~", variable))
+modelo <- lm(formula, data = training)
 summary(modelo)
 indica_test <- setdiff(1:150, indicamue) 
-mue_test <- iris[indica_test, c("Petal.Width", "Sepal.Length")]
+mue_test <- iris[indica_test, c(variable, "Sepal.Length")]
 # predict(modelo, mue_test)
 MSE <- mean((mue_test$Sepal.Length - predict(modelo, mue_test))^2)
 return(MSE)
 }
-MSE(112020)
+MSE(112020, "Petal.Width")
 ```
 
 ```{r}
