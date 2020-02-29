@@ -1,0 +1,186 @@
+---
+title: "Untitled"
+author: "José Fernando zeea"
+date: "29/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Conjunto de datos que mide 20 variables en 322 jugadores.
+
+```{r}
+library(ISLR)
+library(glmnet)
+data(Hitters)
+```
+
+Se omitirán por ahora los datos faltantes para abordar este problema:
+
+```{r}
+#?Hitters
+sum(is.na(Hitters$Salary))
+Hitters <- na.omit(Hitters)
+```
+
+Construya la matriz de diseño incluyendo las dummies respectivas que generan las variables categóricas (se omitirá para estas variables la primera categoría).
+
+```{r}
+X <- model.matrix(Salary∼.,Hitters )[,-1]
+y <- Hitters$Salary
+```
+
+
+Se variará el valor de $lambda$ entre 0.01 y 10E10. Por defecto en R se consideran diferentes valores de $\lambda$.
+
+La regresión ridge y lasso en R trabaja con unidades estandarizadas con el fin de lograr una mejor interpretación en los resultados (standardize=FALSE).
+
+El argumento $\alpha$ definirá si se corre una regresión ridge ($\alpha=0$) o una regresión lasso ($\alpha=1$).
+
+```{r}
+grilla <- 10 ^ seq(10,-2, length = 100)
+```
+
+
+```{r}
+modelo_ridge <- glmnet(X,y,alpha=0, lambda=grilla)
+```
+
+Se pueden observar todos los coeficientes de cada una de estas 100 regresiones:
+
+```{r}
+dim(coef(modelo_ridge))
+
+```
+
+Se contrastan los coeficiente 50 de $\lambda$ con los coeficientes 60 de $\lambda$
+
+```{r}
+modelo_ridge$lambda[50]
+coef(modelo_ridge)[,50]
+```
+
+
+```{r}
+modelo_ridge$lambda[60]
+coef(modelo_ridge)[,60]
+```
+
+
+
+Se pueden observar valores diferentes de $\lambda$ para los pronósticos:
+
+```{r}
+predict(modelo_ridge, s=50, type = "coefficients") 
+```
+
+Partiremos la muestra en conjunto de entrenamiento y de prueba para escoger el modelo más adecuado:
+
+```{r}
+set.seed(1)
+indica_train <- sample(nrow(X), nrow(X)/2)
+indica_test <- -indica_train
+X_train <- X[indica_train,]
+y_train <- y[indica_train]
+X_test <- X[indica_test,]
+y_test <- y[indica_test]
+```
+
+```{r}
+ridge_mod <- glmnet(X_train, y_train, alpha=0, lambda = grid,
+thresh = 1e-12)
+
+ridge_pred <- predict(ridge_mod, s = 4, newx = X_test)
+mean((ridge_pred - y_test)^2)
+```
+
+Esto comparado con el modelo nulo (modelo sólo con el intercepto):
+
+
+```{r}
+ygorro <- mean(y_train)
+mean((ygorro-y_test)^2)
+```
+
+Un resultado similar se obtendría con valor muy grande $\lambda$
+
+```{r}
+ridge_mod <- glmnet(X_train, y_train, alpha=0, lambda = grid,
+thresh = 1e-12)
+
+ridge_pred <- predict(ridge_mod, s = 1e10, newx = X_test)
+mean((ridge_pred - y_test)^2)
+```
+
+
+Analizaremos si hay un beneficio en realizar un modelo con $\lambda=4$ en lugar de simplemente la regresión:
+
+```{r}
+ridge_mod <- glmnet(X_train, y_train, alpha = 0, lambda = grid,
+thresh = 1e-12)
+# Para evitar que interpole con los valores de la grilla
+ridge_pred <- predict(ridge_mod, s = 0, exact = 0, newx = X_test)
+mean((ridge_pred - y_test)^2)
+```
+
+Funciona mejor una regresión ridge con $lambda = 4$. Sin embargo revisaremos para diferentes valores de lambda. 
+
+Se puede realizar una validación cruzada k-fold para revisar el valor óptimo de $\lambda$:
+
+```{r}
+set.seed(1)
+cv_out  <- cv.glmnet(X_train, y_train, alpha=0) # alpha = 0 para regresión ridge.
+plot(cv_out)
+mejorlambda <- cv_out$lambda.min
+mejorlambda
+```
+
+```{r}
+# Para evitar que interpole con los valores de la grilla
+ridge_pred <- predict(ridge_mod, s = mejorlambda, exact = 0, newx = X_test)
+mean((ridge_pred - y_test)^2)
+```
+
+Esto es mejor que haber escogido $\lambda = 4$
+
+Finalmente, corremos el modelo, sobre la muestra de entrenamiento para observar los coeficientes:
+
+```{r}
+modelo_ridgeFinal  <- glmnet(X_train, y_train, alpha=0) # alpha = 0 para regresión ridge. Por defecto el escoge algunos valores
+predict(modelo_ridgeFinal ,type ="coefficients", s = mejorlambda)[1:20,]
+
+```
+
+Procedemos a realizar el mismo análisis que la regresión lasso, esta técnica tiene como característica realizar selección de variables.
+
+```{r}
+lasso_mod <- glmnet(X_train, y_train,alpha=1, lambda = grid)
+plot(lasso_mod)
+```
+
+```{r}
+set.seed(1)
+cv_out <- cv.glmnet(X_train, y_train, alpha = 1) #alpha = 1, lasso
+plot(cv_out)
+
+```
+
+```{r}
+bestlam <- cv_out$lambda.min
+lasso_pred <- predict(lasso_mod, s = bestlam, newx = X_test)
+mean((lasso_pred - y_test)^2)
+bestlam
+```
+
+Observe que se seleccionan variables:
+
+```{r}
+out <- glmnet(X_train, y_train, alpha=1, lambda=grid)
+lasso_coef <- predict(out ,type ="coefficients", s = bestlam)[1:20,]
+lasso_coef
+```
+
+Varios coeficientes son ceros.
+
