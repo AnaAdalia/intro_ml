@@ -1,0 +1,102 @@
+---
+title: "Untitled"
+author: "José Fernando zeea"
+date: "7/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ISLR)
+library(ggplot2)
+library(splines)
+```
+
+
+# Splines 
+Wages: conjunto de datos que relacionan los salarios de un grupo de hombres de la región este de los Estados Unidos.
+
+Se analizará la relación de la edad con el salario:
+
+```{r}
+plot(Wage$age, Wage$wage, xlab = "edad", ylab = "salario")
+```
+
+Se puede elaborar modelos de visualización preliminares que den cuenta de la relación entre la edad u el salario.
+
+
+```{r}
+ggplot(data = Wage, aes(x = age, y = wage)) + geom_point() + geom_smooth()
+```
+
+Evidentemente la relación entre las dos variables no es líneal.
+
+
+```{r}
+summary(Wage$age)
+```
+
+
+
+
+```{r}
+modelo <- lm(wage ∼ bs(age, knots=bs(25,40,60)), data=Wage)
+dim(bs(Wage$age ,knots=c(25, 40, 60) ))
+```
+
+EL número de columnas de la matriz de diseño es 7 (teniendo en cuenta el intercepto).
+
+```{r}
+rango_edad  <- range(Wage$age)
+grillaedad <- seq(from = rango_edad[1], to = rango_edad[2])
+pred <- predict(modelo, newdata = data.frame(age=grillaedad), se=T)
+plot(Wage$age ,Wage$wage ,col="gray")
+lines(grillaedad, pred$fit ,lwd=2)
+lines(grillaedad, pred$fit + 2 * pred$se, lty="dashed")
+lines(grillaedad, pred$fit - 2 * pred$se, lty="dashed")
+```
+
+
+Para que los puntos se escojan basados en percentiles se puede especificar el número de grados de libertad asociado al polinomio cúbico y tres nodos (df = 6). 
+
+```{r}
+dim(bs(Wage$age, df = 6))
+attr(bs(Wage$age, df = 6) ,"knots")
+```
+
+Se puede ajustar un spline también con tres nudos y polinomios de grado 3, pero con las restricciones adicionales de que sea lineal antes del primer nodo y después del segundo nodo con el fin de hacer la función menos variable para la extrapolación.
+
+```{r}
+fit2 <- lm(wage ∼ ns(age, df = 4), data = Wage)
+pred2 <- predict(fit2, newdata = data.frame(age = grillaedad), se=T)
+plot(Wage$age, Wage$wage, col = "gray")
+lines(grillaedad, pred2$fit, col = "red", lwd = 2)
+lines(grillaedad, pred$fit + 2 * pred$se, lty="dashed")
+lines(grillaedad, pred$fit - 2 * pred$se, lty="dashed")
+```
+
+```{r}
+attr(ns(Wage$age ,df=4) , "knots")
+```
+
+
+```{r}
+modelo_smoothSpline <- smooth.spline(Wage$age, Wage$wage, df = 16)
+modelo_smoothSplineCV <- smooth.spline(Wage$age, Wage$wage, cv=TRUE)
+modelo_smoothSplineCV$df
+plot(Wage$age, Wage$wage, xlim = rango_edad, cex =.5, col = "darkgrey")
+title("Smoothing Spline")
+lines(modelo_smoothSpline, col = "red", lwd = 2)
+lines(modelo_smoothSplineCV, col = "red", lwd = 2)
+legend ("topright", legend=c("16 DF" ,"6.8 DF"), col = c("red", "blue"), lty=1, lwd=2, cex =.8)
+```
+
+```{r}
+library(gam)
+# Smootihing spline
+gam.m3 <- gam(wage ∼ s(year, 4) + s(age, 5) + education, data = Wage)
+```
+
