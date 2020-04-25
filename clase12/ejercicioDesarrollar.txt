@@ -1,0 +1,9 @@
+
+1.  Realice el punto del parcial 1 con el método del vecino más cercano (k-nearest neighbour knn). 
+Elija un valor valor adecuado de k (número de vecinos) y estime la métrica que usted utilizó en el parcial para
+evaluar su modelo, compara el desempeño del knn con su modelo propuesto.
+
+2. Lleve a cabo el ejemplo 3 de la lectura de redes nueonales(desempleo)
+3. Investigar la validación cruzada k fold repetida (repeated k fold cross validation), explique en detalle el algoritmo,
+ y mensione las ventajas y desventajas frente a la validación cruzada. Realice un ejemplo con datos. Puede usar
+la librería caret de R o sklearn.
